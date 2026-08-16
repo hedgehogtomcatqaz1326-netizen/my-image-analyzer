@@ -1,55 +1,71 @@
 ﻿import { NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-// APIキー設定
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(request: Request) {
   try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    
     const formData = await request.formData();
     const image = formData.get("image") as File;
+    const lang = (formData.get("lang") as string) || "日本語";
 
     if (!image) {
-      return NextResponse.json({ error: "画像がアップロードされていません" }, { status: 400 });
+      return NextResponse.json({ error: "画像が取得できません。もう一度画像を選んでください。" }, { status: 400 });
     }
 
-    // 画像データの変換
-    const bytes = await image.arrayBuffer();
-    const buffer = Buffer.from(bytes).toString("base64");
+    const arrayBuffer = await image.arrayBuffer();
+    const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    // 安定して動作していた 1.5-flash を指定
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const promptText = `この画像を解析してください。
+以下の条件を必ず守ってください：
+1. 画像に写っているものの説明や情報を集めてください。
+2. 機械が苦手な人や外国人のために、小学生でも分かるように3行の箇条書き（summary）と、キーワードのラベル（labels）にまとめてください。
+3. 出力する言語は「${lang}」で翻訳して出力してください。
+4. 必ず以下のJSON形式のみで回答してください（Markdownのバッククォートなども含めず純粋なJSON文字列にしてください）。
+{"summary": "1行目\\n2行目\\n3行目", "labels": ["項目1", "項目2"]}`;
 
-    const prompt = `この画像を解析してください。
-以下のJSON形式で、JSON以外の余計な文字を含めずに回答してください。
-{
-  "summary": "3行以内の簡潔な説明",
-  "label": "最も主要な名称"
-}`;
-
-    const result = await model.generateContent([
-      prompt,
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
-        inlineData: {
-          data: buffer,
-          mimeType: image.type,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      },
-    ]);
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: promptText },
+                {
+                  inlineData: {
+                    mimeType: image.type,
+                    data: base64Image
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
 
-    const text = result.response.text();
-    
-    // 【重要】AIの回答から { } で囲まれた部分のみを抽出する正規表現
+    const data = await response.json();
+
+    if (!response.ok) {
+      return NextResponse.json({ error: data.error?.message || "API通信エラーが発生しました。" }, { status: 500 });
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) {
+      return NextResponse.json({ error: "AIからの応答が空です。" }, { status: 500 });
+    }
+
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error("JSON形式の結果が得られませんでした");
+      return NextResponse.json({ summary: text, labels: [] });
     }
-    
-    const data = JSON.parse(jsonMatch[0]);
 
-    return NextResponse.json(data);
+    return NextResponse.json(JSON.parse(jsonMatch[0]));
   } catch (error: any) {
-    console.error("API Error:", error);
-    return NextResponse.json({ error: "解析に失敗しました" }, { status: 500 });
+    return NextResponse.json({ error: "サーバー内部エラーが発生しました。" }, { status: 500 });
   }
 }
