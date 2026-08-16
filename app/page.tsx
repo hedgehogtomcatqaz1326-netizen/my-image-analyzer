@@ -1,16 +1,23 @@
 "use client";
 
-import { useState, ChangeEvent } from "react";
+import { useState, useRef, useEffect } from "react";
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedLang, setSelectedLang] = useState<string>("日本語");
   const [loading, setLoading] = useState<boolean>(false);
   const [result, setResult] = useState<{ summary: string; labels: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+  // アプリ起動（マウント時）と同時に自動でカメラ（ファイル選択ダイアログ）を起動する
+  useEffect(() => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  }, []);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedImage(file);
@@ -22,7 +29,7 @@ export default function Home() {
 
   const handleAnalyze = async () => {
     if (!selectedImage) {
-      setError("画像が取得できません。もう一度画像を選んでください。");
+      setError("写真が選択されていません。");
       return;
     }
 
@@ -33,7 +40,8 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("image", selectedImage);
-      formData.append("lang", selectedLang);
+      // 外国語対応を取り消したため、言語指定は常に日本語固定
+      formData.append("lang", "日本語");
 
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -61,34 +69,41 @@ export default function Home() {
       </h1>
 
       <div style={{ backgroundColor: "#f9f9f9", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
-        <label style={{ display: "block", marginBottom: "10px", fontWeight: "bold" }}>
-          1. 言語を選んでください
-        </label>
-        <select
-          value={selectedLang}
-          onChange={(e) => setSelectedLang(e.target.value)}
-          style={{ width: "100%", padding: "10px", fontSize: "16px", marginBottom: "20px", borderRadius: "4px" }}
-        >
-          <option value="日本語">日本語</option>
-          <option value="英語">English (英語)</option>
-          <option value="中国語">中文 (中国語)</option>
-          <option value="韓国語">한국어 (韓国語)</option>
-          <option value="ポルトガル語">Português (ポルトガル語)</option>
-        </select>
+        <p style={{ marginBottom: "15px", fontWeight: "bold", textAlign: "center" }}>
+          アプリを開くと同時にカメラが起動します
+        </p>
 
-        <label style={{ display: "block", marginBottom: "10px", fontWeight: "bold" }}>
-          2. 写真を選んでください
-        </label>
+        {/* 隠しファイル入力：capture="environment" によりスマホでは直接外カメラが起動 */}
         <input
           type="file"
           accept="image/*"
+          capture="environment"
+          ref={fileInputRef}
           onChange={handleImageChange}
-          style={{ width: "100%", marginBottom: "15px" }}
+          style={{ display: "none" }}
         />
+
+        <div style={{ textAlign: "center", marginBottom: "15px" }}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#6c757d",
+              color: "#fff",
+              fontSize: "14px",
+              border: "none",
+              borderRadius: "4px",
+              cursor: "pointer",
+              marginBottom: "15px"
+            }}
+          >
+            📸 もう一度写真を撮る / 選ぶ
+          </button>
+        </div>
 
         {previewUrl && (
           <div style={{ textAlign: "center", marginBottom: "15px" }}>
-            <img src={previewUrl} alt="プレビュー" style={{ maxWidth: "100%", maxHeight: "200px", borderRadius: "4px" }} />
+            <img src={previewUrl} alt="プレビュー" style={{ maxWidth: "100%", maxHeight: "250px", borderRadius: "4px" }} />
           </div>
         )}
 
@@ -107,7 +122,7 @@ export default function Home() {
             cursor: loading || !selectedImage ? "not-allowed" : "pointer"
           }}
         >
-          {loading ? "解析中..." : "3. 解析する"}
+          {loading ? "解析中..." : "解析する"}
         </button>
       </div>
 
