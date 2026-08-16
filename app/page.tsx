@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 
 export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -10,13 +10,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // アプリ起動（マウント時）と同時に自動でカメラ（ファイル選択ダイアログ）を起動する
-  useEffect(() => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  }, []);
-
+  // ファイルが選択されたときの処理
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -24,6 +18,13 @@ export default function Home() {
       setPreviewUrl(URL.createObjectURL(file));
       setResult(null);
       setError(null);
+    }
+  };
+
+  // 写真選択エリアまたはボタンを押したときにカメラを起動
+  const triggerCamera = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -40,7 +41,6 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("image", selectedImage);
-      // 外国語対応を取り消したため、言語指定は常に日本語固定
       formData.append("lang", "日本語");
 
       const res = await fetch("/api/analyze", {
@@ -68,63 +68,63 @@ export default function Home() {
         AI画像かんたん解析アプリ
       </h1>
 
-      <div style={{ backgroundColor: "#f9f9f9", padding: "20px", borderRadius: "8px", border: "1px solid #ddd", marginBottom: "20px" }}>
-        <p style={{ marginBottom: "15px", fontWeight: "bold", textAlign: "center" }}>
-          アプリを開くと同時にカメラが起動します
+      {/* 隠しファイル入力：スマホでは直接カメラが起動 */}
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        ref={fileInputRef}
+        onChange={handleImageChange}
+        style={{ display: "none" }}
+      />
+
+      {/* 画面全体の撮影トリガーエリア */}
+      <div 
+        onClick={triggerCamera}
+        style={{ 
+          backgroundColor: "#f9f9f9", 
+          padding: "30px 20px", 
+          borderRadius: "8px", 
+          border: "2px dashed #0070f3", 
+          textAlign: "center", 
+          marginBottom: "20px",
+          cursor: "pointer"
+        }}
+      >
+        <p style={{ fontSize: "18px", fontWeight: "bold", color: "#0070f3", margin: "0 0 10px 0" }}>
+          📸 タップして写真を撮る / 選ぶ
+        </p>
+        <p style={{ fontSize: "14px", color: "#666", margin: "0" }}>
+          ここを押すとすぐにカメラが起動します
         </p>
 
-        {/* 隠しファイル入力：capture="environment" によりスマホでは直接外カメラが起動 */}
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          ref={fileInputRef}
-          onChange={handleImageChange}
-          style={{ display: "none" }}
-        />
-
-        <div style={{ textAlign: "center", marginBottom: "15px" }}>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              padding: "10px 20px",
-              backgroundColor: "#6c757d",
-              color: "#fff",
-              fontSize: "14px",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-              marginBottom: "15px"
-            }}
-          >
-            📸 もう一度写真を撮る / 選ぶ
-          </button>
-        </div>
-
         {previewUrl && (
-          <div style={{ textAlign: "center", marginBottom: "15px" }}>
+          <div style={{ marginTop: "15px" }} onClick={(e) => e.stopPropagation()}>
             <img src={previewUrl} alt="プレビュー" style={{ maxWidth: "100%", maxHeight: "250px", borderRadius: "4px" }} />
           </div>
         )}
+      </div>
 
+      {previewUrl && (
         <button
           onClick={handleAnalyze}
-          disabled={loading || !selectedImage}
+          disabled={loading}
           style={{
             width: "100%",
             padding: "15px",
-            backgroundColor: loading || !selectedImage ? "#ccc" : "#0070f3",
+            backgroundColor: loading ? "#ccc" : "#0070f3",
             color: "#fff",
             fontSize: "18px",
             fontWeight: "bold",
             border: "none",
             borderRadius: "4px",
-            cursor: loading || !selectedImage ? "not-allowed" : "pointer"
+            cursor: loading ? "not-allowed" : "pointer",
+            marginBottom: "20px"
           }}
         >
           {loading ? "解析中..." : "解析する"}
         </button>
-      </div>
+      )}
 
       {error && (
         <div style={{ backgroundColor: "#ffebee", color: "#c62828", padding: "15px", borderRadius: "4px", marginBottom: "20px" }}>
@@ -137,33 +137,55 @@ export default function Home() {
           <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "10px", color: "#2e7d32" }}>
             解析結果
           </h2>
-          <p style={{ whiteSpace: "pre-line", fontSize: "16px", lineHeight: "1.6", marginBottom: "15px" }}>
+          <p style={{ whiteSpace: "pre-line", fontSize: "16px", lineHeight: "1.6", marginBottom: "20px" }}>
             {result.summary}
           </p>
-          <div style={{ marginBottom: "10px", fontSize: "14px", color: "#555", fontWeight: "bold" }}>
-            気になる言葉を押すと、詳しく調べたり画像を見ることができます：
+
+          <div style={{ marginBottom: "15px", fontSize: "14px", color: "#333", fontWeight: "bold" }}>
+            キーワードから詳細を調べる：
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             {result.labels.map((label: string, index: number) => (
-              <a
-                key={index}
-                href={`https://www.google.com/search?q=${encodeURIComponent(label)}&tbm=isch`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  backgroundColor: "#c8e6c9",
-                  color: "#1b5e20",
-                  padding: "6px 12px",
-                  borderRadius: "20px",
-                  fontSize: "14px",
-                  textDecoration: "none",
-                  fontWeight: "bold",
-                  border: "1px solid #81c784",
-                  display: "inline-block"
-                }}
-              >
-                #{label} 🔍
-              </a>
+              <div key={index} style={{ backgroundColor: "#fff", padding: "12px", borderRadius: "6px", border: "1px solid #c8e6c9" }}>
+                <div style={{ fontWeight: "bold", marginBottom: "8px", color: "#1b5e20" }}>
+                  #{label}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(label)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#e3f2fd", color: "#0d47a1", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
+                  >
+                    Googleで検索
+                  </a>
+                  <a
+                    href={`https://ja.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(label)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#f3e5f5", color: "#4a148c", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
+                  >
+                    ウィキペディアで検索
+                  </a>
+                  <a
+                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(label)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#ffebee", color: "#b71c1c", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
+                  >
+                    YouTubeで検索
+                  </a>
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(label)}&tbm=isch`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#e8f5e9", color: "#1b5e20", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
+                  >
+                    類似画像を検索
+                  </a>
+                </div>
+              </div>
             ))}
           </div>
         </div>
