@@ -23,9 +23,8 @@ export async function POST(request: Request) {
 4. 必ず以下のJSON形式のみで回答してください（Markdownのバッククォートなども含めず純粋なJSON文字列にしてください）。
 {"summary": "1行目\\n2行目\\n3行目", "labels": ["項目1", "項目2"]}`;
 
-    // 最初に動いていたときの安定したモデル名（gemini-1.5-flash または gemini-3.6-flash 等の正しいもの）に戻す
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
