@@ -5,18 +5,14 @@ import { useState } from "react";
 export default function Home() {
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
 
-  // ボタン用のスタイル定義
-  const btnStyle = {
-    display: "block",
-    padding: "10px",
-    textAlign: "center" as const,
-    backgroundColor: "#ffffff",
-    border: "1px solid #cbd5e1",
-    borderRadius: "6px",
-    color: "#1e293b",
-    textDecoration: "none",
-    fontWeight: "500",
+  // ファイル選択時にプレビューを表示する処理
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPreview(URL.createObjectURL(file));
+    }
   };
 
   const handleAnalyze = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -43,8 +39,28 @@ export default function Home() {
       <h1>AI画像解析</h1>
       
       <form onSubmit={handleAnalyze}>
-        <input type="file" name="image" accept="image/*" required />
-        <button type="submit" disabled={loading}>
+        <div style={{ marginBottom: "15px" }}>
+          <input 
+            type="file" 
+            name="image" 
+            accept="image/*" 
+            onChange={handleImageChange}
+            required 
+          />
+        </div>
+
+        {/* 選択した画像のプレビュー表示 */}
+        {preview && (
+          <div style={{ marginBottom: "15px", border: "2px dashed #cbd5e1", padding: "10px", textAlign: "center", borderRadius: "8px" }}>
+            <img src={preview} alt="プレビュー" style={{ maxWidth: "100%", maxHeight: "250px", borderRadius: "4px" }} />
+          </div>
+        )}
+
+        <button 
+          type="submit" 
+          disabled={loading}
+          style={{ padding: "10px 20px", backgroundColor: "#0070f3", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" }}
+        >
           {loading ? "解析中..." : "この画像を解析"}
         </button>
       </form>
@@ -58,6 +74,18 @@ export default function Home() {
           {(() => {
             const searchKeyword = result.labels?.[0] || result.label || "検索ワード";
             
+            const btnStyle = {
+              display: "block",
+              padding: "10px",
+              textAlign: "center" as const,
+              backgroundColor: "#ffffff",
+              border: "1px solid #cbd5e1",
+              borderRadius: "6px",
+              color: "#1e293b",
+              textDecoration: "none",
+              fontWeight: "500",
+            };
+
             return (
               <div style={{ backgroundColor: "#eef2ff", padding: "15px", borderRadius: "8px" }}>
                 <p style={{ textAlign: "center", fontWeight: "bold", marginBottom: "10px" }}>
