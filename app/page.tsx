@@ -6,7 +6,8 @@ export default function Home() {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [result, setResult] = useState<{ summary: string; labels: string[] } | null>(null);
+  // 型定義を修正：resultはnullの可能性があるため安全に扱えるようにします
+  const [result, setResult] = useState<{ summary: string; label: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,16 +22,11 @@ export default function Home() {
   };
 
   const triggerCamera = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    fileInputRef.current?.click();
   };
 
   const handleAnalyze = async () => {
-    if (!selectedImage) {
-      setError("写真が選択されていません。");
-      return;
-    }
+    if (!selectedImage) return;
 
     setLoading(true);
     setError(null);
@@ -39,151 +35,68 @@ export default function Home() {
     try {
       const formData = new FormData();
       formData.append("image", selectedImage);
-      formData.append("lang", "日本語");
-
+      
       const res = await fetch("/api/analyze", {
         method: "POST",
         body: formData,
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "解析に失敗しました。");
-      }
+      if (!res.ok) throw new Error(data.error || "解析失敗");
 
       setResult(data);
     } catch (err: any) {
-      setError(err.message || "通信エラーが発生しました。");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
+  // ボタンデザインの共通スタイル
+  const btnStyle: React.CSSProperties = {
+    padding: "10px",
+    fontSize: "13px",
+    backgroundColor: "#fff",
+    border: "1px solid #ccc",
+    borderRadius: "5px",
+    textAlign: "center",
+    textDecoration: "none",
+    color: "#333",
+    fontWeight: "bold",
+    display: "block"
+  };
+
   return (
     <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px", fontFamily: "sans-serif" }}>
-      <h1 style={{ fontSize: "24px", fontWeight: "bold", textAlign: "center", marginBottom: "20px" }}>
-        AI画像かんたん解析アプリ
-      </h1>
+      <h1 style={{ fontSize: "22px", textAlign: "center", marginBottom: "20px" }}>AI画像解析</h1>
 
-      <input
-        type="file"
-        accept="image/*"
-        capture="environment"
-        ref={fileInputRef}
-        onChange={handleImageChange}
-        style={{ display: "none" }}
-      />
+      <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handleImageChange} style={{ display: "none" }} />
 
-      <div 
-        onClick={triggerCamera}
-        style={{ 
-          backgroundColor: "#f9f9f9", 
-          padding: "30px 20px", 
-          borderRadius: "8px", 
-          border: "2px dashed #0070f3", 
-          textAlign: "center", 
-          marginBottom: "20px",
-          cursor: "pointer"
-        }}
-      >
-        <p style={{ fontSize: "18px", fontWeight: "bold", color: "#0070f3", margin: "0 0 10px 0" }}>
-          📸 タップして写真を撮る / 選ぶ
-        </p>
-        <p style={{ fontSize: "14px", color: "#666", margin: "0" }}>
-          ここを押すとすぐにカメラが起動します
-        </p>
-
-        {previewUrl && (
-          <div style={{ marginTop: "15px" }} onClick={(e) => e.stopPropagation()}>
-            <img src={previewUrl} alt="プレビュー" style={{ maxWidth: "100%", maxHeight: "250px", borderRadius: "4px" }} />
-          </div>
-        )}
+      <div onClick={triggerCamera} style={{ border: "2px dashed #0070f3", padding: "20px", textAlign: "center", cursor: "pointer", borderRadius: "8px" }}>
+        {previewUrl ? <img src={previewUrl} alt="プレビュー" style={{ maxWidth: "100%", maxHeight: "200px" }} /> : <p>タップして写真を撮る</p>}
       </div>
 
-      {previewUrl && (
-        <button
-          onClick={handleAnalyze}
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "15px",
-            backgroundColor: loading ? "#ccc" : "#0070f3",
-            color: "#fff",
-            fontSize: "18px",
-            fontWeight: "bold",
-            border: "none",
-            borderRadius: "4px",
-            cursor: loading ? "not-allowed" : "pointer",
-            marginBottom: "20px"
-          }}
-        >
-          {loading ? "解析中..." : "解析する"}
+      {previewUrl && !result && (
+        <button onClick={handleAnalyze} disabled={loading} style={{ width: "100%", padding: "15px", marginTop: "10px", backgroundColor: "#0070f3", color: "#fff", border: "none", borderRadius: "5px" }}>
+          {loading ? "解析中..." : "この画像を解析"}
         </button>
       )}
 
-      {error && (
-        <div style={{ backgroundColor: "#ffebee", color: "#c62828", padding: "15px", borderRadius: "4px", marginBottom: "20px" }}>
-          <strong>エラー：</strong> {error}
-        </div>
-      )}
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       {result && (
-        <div style={{ backgroundColor: "#e8f5e9", padding: "20px", borderRadius: "4px", border: "1px solid #a5d6a7" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "10px", color: "#2e7d32" }}>
-            解析結果
-          </h2>
-          <p style={{ whiteSpace: "pre-line", fontSize: "16px", lineHeight: "1.6", marginBottom: "20px" }}>
-            {result.summary}
-          </p>
-
-          <div style={{ marginBottom: "15px", fontSize: "14px", color: "#333", fontWeight: "bold" }}>
-            キーワードから詳細を調べる：
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
-            {result.labels.map((label: string, index: number) => (
-              <div key={index} style={{ backgroundColor: "#fff", padding: "12px", borderRadius: "6px", border: "1px solid #c8e6c9" }}>
-                {/* ハッシュタグ記号を外し、テキストのみを表示 */}
-                <div style={{ fontWeight: "bold", marginBottom: "8px", color: "#1b5e20", fontSize: "16px" }}>
-                  {label}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(label)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#e3f2fd", color: "#0d47a1", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
-                  >
-                    Googleで検索
-                  </a>
-                  <a
-                    href={`https://ja.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(label)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#f3e5f5", color: "#4a148c", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
-                  >
-                    ウィキペディアで検索
-                  </a>
-                  <a
-                    href={`https://www.youtube.com/results?search_query=${encodeURIComponent(label)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#ffebee", color: "#b71c1c", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
-                  >
-                    YouTubeで検索
-                  </a>
-                  <a
-                    href={`https://www.google.com/search?q=${encodeURIComponent(label)}&tbm=isch`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ fontSize: "12px", padding: "6px 10px", backgroundColor: "#e8f5e9", color: "#1b5e20", textDecoration: "none", borderRadius: "4px", fontWeight: "bold" }}
-                  >
-                    類似画像を検索
-                  </a>
-                </div>
-              </div>
-            ))}
+        <div style={{ marginTop: "20px", padding: "20px", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
+          <h2 style={{ fontSize: "18px", marginBottom: "10px" }}>解析結果</h2>
+          <p style={{ whiteSpace: "pre-line", marginBottom: "20px" }}>{result.summary}</p>
+          
+          <div style={{ backgroundColor: "#eef2ff", padding: "15px", borderRadius: "8px" }}>
+            <p style={{ textAlign: "center", fontWeight: "bold", marginBottom: "10px" }}>「{result.label}」について調べる</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              <a href={`https://www.google.com/search?q=${encodeURIComponent(result.label)}`} target="_blank" style={btnStyle}>Google検索</a>
+              <a href={`https://ja.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(result.label)}`} target="_blank" style={btnStyle}>Wikipedia</a>
+              <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(result.label)}`} target="_blank" style={btnStyle}>YouTube</a>
+              <a href={`https://www.google.com/search?q=${encodeURIComponent(result.label)}&tbm=isch`} target="_blank" style={btnStyle}>画像検索</a>
+            </div>
           </div>
         </div>
       )}
