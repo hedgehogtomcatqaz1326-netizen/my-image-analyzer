@@ -10,7 +10,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ファイルが選択されたときの処理
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -21,7 +20,6 @@ export default function Home() {
     }
   };
 
-  // 写真選択エリアまたはボタンを押したときにカメラを起動
   const triggerCamera = () => {
     if (fileInputRef.current) {
       fileInputRef.current.click();
@@ -68,7 +66,6 @@ export default function Home() {
         AI画像かんたん解析アプリ
       </h1>
 
-      {/* 隠しファイル入力：スマホでは直接カメラが起動 */}
       <input
         type="file"
         accept="image/*"
@@ -78,7 +75,6 @@ export default function Home() {
         style={{ display: "none" }}
       />
 
-      {/* 画面全体の撮影トリガーエリア */}
       <div 
         onClick={triggerCamera}
         style={{ 
@@ -148,8 +144,9 @@ export default function Home() {
           <div style={{ display: "flex", flexDirection: "column", gap: "15px" }}>
             {result.labels.map((label: string, index: number) => (
               <div key={index} style={{ backgroundColor: "#fff", padding: "12px", borderRadius: "6px", border: "1px solid #c8e6c9" }}>
-                <div style={{ fontWeight: "bold", marginBottom: "8px", color: "#1b5e20" }}>
-                  #{label}
+                {/* ハッシュタグ記号を外し、テキストのみを表示 */}
+                <div style={{ fontWeight: "bold", marginBottom: "8px", color: "#1b5e20", fontSize: "16px" }}>
+                  {label}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
                   <a
