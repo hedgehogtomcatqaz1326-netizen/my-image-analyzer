@@ -15,13 +15,17 @@ export async function POST(request: Request) {
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を解析してください。
-以下の条件を必ず守ってください：
-1. 画像に写っているものの説明や情報を集めてください。
-2. 小学生でも分かるように3行の箇条書き（summary）と、キーワードのラベル（labels）にまとめてください。
-3. 出力する言語は「${lang}」にしてください。
-4. 必ずJSON形式のみで回答してください。
-{"summary": "1行目\\n2行目\\n3行目", "labels": ["項目1", "項目2"]}`;
+    const promptText = `この画像を細部まで解析し、以下の情報を必ず有効なJSON形式のみで出力してください。
+条件：
+1. productName: 製品名
+2. price: おおよその価格帯
+3. company: 産地または製造元会社名
+4. basicInfo: 基礎情報
+5. trivia: 豆知識
+6. searchQuery: 類似画像検索用のキーワード
+出力フォーマット例：
+{"productName": "...", "price": "...", "company": "...", "basicInfo": "...", "trivia": "...", "searchQuery": "..."}
+出力言語：「${lang}」`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -51,44 +55,21 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ 
-        summary: "画像から情報を取得できませんでした。", 
-        labels: ["画像解析"] 
-      });
+      return NextResponse.json({ error: data.error?.message || "APIエラー" }, { status: 500 });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      return NextResponse.json({ 
-        summary: "画像を解析できませんでした。", 
-        labels: ["画像解析"] 
-      });
+      return NextResponse.json({ error: "応答が空です" }, { status: 500 });
     }
 
-    // JSONを安全に抽出（失敗しても絶対に500エラーにせず、テキストをそのままサマリーにする）
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return NextResponse.json({
-          summary: parsed.summary || text,
-          labels: parsed.labels || ["画像解析"]
-        });
-      }
-    } catch (e) {
-      // パース失敗時のフォールバック
-    }
+    let jsonString = text.trim();
+    jsonString = jsonString.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
 
-    return NextResponse.json({ 
-      summary: text, 
-      labels: ["画像解析"] 
-    });
+    const parsedData = JSON.parse(jsonString);
+    return NextResponse.json(parsedData);
 
   } catch (error: any) {
-    // 万が一何かが起きても500エラーで止めず、安全にテキストを返す
-    return NextResponse.json({ 
-      summary: "解析処理中にエラーが発生しました。", 
-      labels: ["画像解析"] 
-    });
+    return NextResponse.json({ error: "解析失敗" }, { status: 500 });
   }
 }
