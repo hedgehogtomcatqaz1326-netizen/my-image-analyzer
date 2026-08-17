@@ -9,22 +9,27 @@ export async function POST(request: Request) {
     const lang = (formData.get("lang") as string) || "日本語";
 
     if (!image) {
-      return NextResponse.json({ error: "画像が取得できません。" }, { status: 400 });
+      return NextResponse.json({ 
+        price: "-", 
+        company: "-", 
+        basicInfo: "画像が取得できませんでした。", 
+        trivia: "-", 
+        searchQuery: "画像解析" 
+      }, { status: 400 });
     }
 
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を細部まで解析し、以下のキーを持つ有効なJSON形式のみで出力してください。他の文字やMarkdownは一切含めないでください。
+    const promptText = `この画像を詳細に解析し、必ず以下のJSONフォーマットのみで出力してください。マークダウンや他の文字列は一切含めないでください。
 {
-  "productName": "製品名",
-  "price": "およその価格",
-  "company": "会社名 / 産地",
-  "basicInfo": "基礎情報",
-  "trivia": "豆知識",
-  "searchQuery": "類似画像検索用のキーワード"
+  "price": "およその価格（例: 約150円〜200円 など）",
+  "company": "会社名 / 産地（例: 日清食品 など）",
+  "basicInfo": "基礎情報（製品の特徴や概要）",
+  "trivia": "豆知識（知られざる特徴や歴史など）",
+  "searchQuery": "類似画像検索用のキーワード（製品名やブランド名）"
 }
-出力言語：「${lang}」`;
+出力言語: ${lang}`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -55,25 +60,23 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       return NextResponse.json({ 
-        productName: "エラー", 
         price: "-", 
         company: "-", 
-        basicInfo: data.error?.message || "APIエラー", 
+        basicInfo: data.error?.message || "APIエラーが発生しました。", 
         trivia: "-", 
         searchQuery: "画像解析" 
-      }, { status: 500 });
+      });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       return NextResponse.json({ 
-        productName: "エラー", 
         price: "-", 
         company: "-", 
-        basicInfo: "応答が空です", 
+        basicInfo: "AIからの応答が空です。", 
         trivia: "-", 
         searchQuery: "画像解析" 
-      }, { status: 500 });
+      });
     }
 
     let cleanText = text.trim();
@@ -81,12 +84,17 @@ export async function POST(request: Request) {
 
     const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      const parsedData = JSON.parse(jsonMatch[0]);
-      return NextResponse.json(parsedData);
+      const parsed = JSON.parse(jsonMatch[0]);
+      return NextResponse.json({
+        price: parsed.price || "-",
+        company: parsed.company || "-",
+        basicInfo: parsed.basicInfo || text,
+        trivia: parsed.trivia || "-",
+        searchQuery: parsed.searchQuery || "画像解析"
+      });
     }
 
     return NextResponse.json({ 
-      productName: "解析結果", 
       price: "-", 
       company: "-", 
       basicInfo: text, 
@@ -96,10 +104,9 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     return NextResponse.json({ 
-      productName: "エラー", 
       price: "-", 
       company: "-", 
-      basicInfo: "解析失敗", 
+      basicInfo: "サーバーエラーが発生しました。", 
       trivia: "-", 
       searchQuery: "画像解析" 
     }, { status: 500 });

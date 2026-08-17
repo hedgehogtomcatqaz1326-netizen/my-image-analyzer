@@ -38,15 +38,18 @@ export default function Home() {
       setResult(data);
     } catch (error) {
       setResult({
-        summary: "通信エラーが発生しました。もう一度お試しください。",
-        labels: ["画像解析"]
+        price: "-",
+        company: "-",
+        basicInfo: "通信エラーが発生しました。",
+        trivia: "-",
+        searchQuery: "画像解析"
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const currentKeyword = result?.labels?.[0] || "画像解析";
+  const searchQuery = result?.searchQuery || "画像解析";
 
   return (
     <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px", fontFamily: "sans-serif" }}>
@@ -93,50 +96,37 @@ export default function Home() {
 
       {result && (
         <div style={{ marginTop: "20px", padding: "20px", backgroundColor: "#f0fdf4", borderRadius: "12px", border: "1px solid #bbf7d0" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "10px", color: "#166534" }}>解析結果</h2>
+          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "15px", color: "#166534" }}>解析結果</h2>
           
-          <div style={{ marginBottom: "20px", fontSize: "15px", lineHeight: "1.6", color: "#1e293b", whiteSpace: "pre-line" }}>
-            {result.summary}
+          <div style={{ marginBottom: "12px", fontSize: "15px", lineHeight: "1.5", color: "#1e293b" }}>
+            <strong>およその価格:</strong><br />
+            <span>{result.price}</span>
           </div>
 
-          <div style={{ backgroundColor: "#eff6ff", padding: "15px", borderRadius: "8px", textAlign: "center" }}>
-            <p style={{ fontSize: "14px", fontWeight: "bold", marginBottom: "12px", color: "#1e3a8a" }}>
-              「{currentKeyword}」について調べる
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <a 
-                href={`[https://www.google.com/search?q=$](https://www.google.com/search?q=$){encodeURIComponent(currentKeyword)}`} 
-                target="_blank" 
-                rel="noreferrer"
-                style={{ padding: "10px", backgroundColor: "#fff", color: "#1e293b", textDecoration: "none", borderRadius: "6px", fontSize: "14px", fontWeight: "bold", border: "1px solid #cbd5e1", textAlign: "center" }}
-              >
-                Google検索
-              </a>
-              <a 
-                href={`[https://ja.wikipedia.org/wiki/Special:Search?search=$](https://ja.wikipedia.org/wiki/Special:Search?search=$){encodeURIComponent(currentKeyword)}`} 
-                target="_blank" 
-                rel="noreferrer"
-                style={{ padding: "10px", backgroundColor: "#fff", color: "#1e293b", textDecoration: "none", borderRadius: "6px", fontSize: "14px", fontWeight: "bold", border: "1px solid #cbd5e1", textAlign: "center" }}
-              >
-                Wikipedia
-              </a>
-              <a 
-                href={`[https://www.youtube.com/results?search_query=$](https://www.youtube.com/results?search_query=$){encodeURIComponent(currentKeyword)}`} 
-                target="_blank" 
-                rel="noreferrer"
-                style={{ padding: "10px", backgroundColor: "#fff", color: "#1e293b", textDecoration: "none", borderRadius: "6px", fontSize: "14px", fontWeight: "bold", border: "1px solid #cbd5e1", textAlign: "center" }}
-              >
-                YouTube
-              </a>
-              <a 
-                href={`[https://www.google.com/search?q=$](https://www.google.com/search?q=$){encodeURIComponent(currentKeyword)}&tbm=isch`} 
-                target="_blank" 
-                rel="noreferrer"
-                style={{ padding: "10px", backgroundColor: "#fff", color: "#1e293b", textDecoration: "none", borderRadius: "6px", fontSize: "14px", fontWeight: "bold", border: "1px solid #cbd5e1", textAlign: "center" }}
-              >
-                画像検索
-              </a>
-            </div>
+          <div style={{ marginBottom: "12px", fontSize: "15px", lineHeight: "1.5", color: "#1e293b" }}>
+            <strong>会社名 / 産地:</strong><br />
+            <span>{result.company}</span>
+          </div>
+
+          <div style={{ marginBottom: "12px", fontSize: "15px", lineHeight: "1.5", color: "#1e293b" }}>
+            <strong>基礎情報:</strong><br />
+            <span style={{ whiteSpace: "pre-line" }}>{result.basicInfo}</span>
+          </div>
+
+          <div style={{ marginBottom: "20px", fontSize: "15px", lineHeight: "1.5", color: "#1e293b" }}>
+            <strong>豆知識:</strong><br />
+            <span style={{ whiteSpace: "pre-line" }}>{result.trivia}</span>
+          </div>
+
+          <div style={{ textAlign: "center" }}>
+            <a 
+              href={`[https://www.google.com/search?q=$](https://www.google.com/search?q=$){encodeURIComponent(searchQuery)}&tbm=isch`} 
+              target="_blank" 
+              rel="noreferrer"
+              style={{ display: "block", width: "100%", padding: "14px", backgroundColor: "#2563eb", color: "#fff", textDecoration: "none", borderRadius: "8px", fontSize: "16px", fontWeight: "bold", textAlign: "center", boxShadow: "0 4px 6px rgba(37, 99, 235, 0.2)" }}
+            >
+              類似画像を検索して詳細を見る
+            </a>
           </div>
         </div>
       )}
