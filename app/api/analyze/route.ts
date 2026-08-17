@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を細部まで解析し、以下のキーを持つ有効なJSON形式のみで出力してください（マークダウンのバッククォートなども含めず、純粋なJSON文字列のみを返してください）。
+    const promptText = `この画像を細部まで解析し、以下のキーを持つ有効なJSON形式のみで出力してください。他の文字やMarkdownは一切含めないでください。
 {
   "productName": "製品名",
   "price": "およその価格",
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         productName: "エラー", 
         price: "-", 
         company: "-", 
-        basicInfo: data.error?.message || "APIエラーが発生しました。", 
+        basicInfo: data.error?.message || "APIエラー", 
         trivia: "-", 
         searchQuery: "画像解析" 
       }, { status: 500 });
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
         productName: "エラー", 
         price: "-", 
         company: "-", 
-        basicInfo: "AIからの応答が空です。", 
+        basicInfo: "応答が空です", 
         trivia: "-", 
         searchQuery: "画像解析" 
       }, { status: 500 });
@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       productName: "エラー", 
       price: "-", 
       company: "-", 
-      basicInfo: "サーバー内部エラーが発生しました。", 
+      basicInfo: "解析失敗", 
       trivia: "-", 
       searchQuery: "画像解析" 
     }, { status: 500 });
