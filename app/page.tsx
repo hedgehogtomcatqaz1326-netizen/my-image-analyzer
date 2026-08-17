@@ -46,24 +46,11 @@ export default function Home() {
     }
   };
 
-  // ボタン用のスタイル
-  const btnStyle = {
-    display: "block",
-    padding: "10px",
-    textAlign: "center" as const,
-    backgroundColor: "#ffffff",
-    border: "1px solid #cbd5e1",
-    borderRadius: "6px",
-    color: "#1e293b",
-    textDecoration: "none",
-    fontWeight: "500",
-  };
-
   return (
     <main style={{ maxWidth: "600px", margin: "0 auto", padding: "20px", fontFamily: "sans-serif" }}>
       <h1 style={{ fontSize: "22px", textAlign: "center", marginBottom: "20px" }}>AI画像解析</h1>
 
-      {/* カメラ起動用の隠しinput（capture="environment" で直接カメラが起動） */}
+      {/* カメラ起動用の隠しinput */}
       <input 
         type="file" 
         name="image" 
@@ -100,29 +87,36 @@ export default function Home() {
         </button>
       )}
 
-      {/* 解析結果の表示 */}
+      {/* 解析結果の表示（製品名・価格・会社名・基礎情報・豆知識・類似画像検索） */}
       {result && (
         <div style={{ marginTop: "20px", padding: "20px", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
-          <h2 style={{ fontSize: "18px", marginBottom: "10px" }}>解析結果</h2>
-          <p style={{ whiteSpace: "pre-line", marginBottom: "20px" }}>{result.summary}</p>
+          <h2 style={{ fontSize: "20px", marginBottom: "15px", color: "#166534" }}>{result.productName}</h2>
           
-          {(() => {
-            const searchKeyword = result.labels?.[0] || result.label || "検索ワード";
-            
-            return (
-              <div style={{ backgroundColor: "#eef2ff", padding: "15px", borderRadius: "8px" }}>
-                <p style={{ textAlign: "center", fontWeight: "bold", marginBottom: "10px" }}>
-                  「{searchKeyword}」について調べる
-                </p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <a href={`https://www.google.com/search?q=${encodeURIComponent(searchKeyword)}`} target="_blank" rel="noreferrer" style={btnStyle}>Google検索</a>
-                  <a href={`https://ja.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(searchKeyword)}`} target="_blank" rel="noreferrer" style={btnStyle}>Wikipedia</a>
-                  <a href={`https://www.youtube.com/results?search_query=${encodeURIComponent(searchKeyword)}`} target="_blank" rel="noreferrer" style={btnStyle}>YouTube</a>
-                  <a href={`https://www.google.com/search?q=${encodeURIComponent(searchKeyword)}&tbm=isch`} target="_blank" rel="noreferrer" style={btnStyle}>画像検索</a>
-                </div>
-              </div>
-            );
-          })()}
+          <div style={{ marginBottom: "20px", fontSize: "14px", lineHeight: "1.6", color: "#1e293b" }}>
+            <p style={{ marginBottom: "8px" }}><strong>およその価格:</strong> {result.price}</p>
+            <p style={{ marginBottom: "8px" }}><strong>会社名 / 産地:</strong> {result.company}</p>
+            <p style={{ marginBottom: "8px" }}><strong>基礎情報:</strong> {result.basicInfo}</p>
+            <p style={{ marginBottom: "8px" }}><strong>豆知識:</strong> {result.trivia}</p>
+          </div>
+
+          <div style={{ textAlign: "center" }}>
+            <a 
+              href={`https://www.google.com/search?q=${encodeURIComponent(result.searchQuery || result.productName)}&tbm=isch`} 
+              target="_blank" 
+              rel="noreferrer"
+              style={{
+                display: "block",
+                padding: "12px",
+                backgroundColor: "#2563eb",
+                color: "#fff",
+                textDecoration: "none",
+                borderRadius: "6px",
+                fontWeight: "bold"
+              }}
+            >
+              類似画像を検索して詳細を見る
+            </a>
+          </div>
         </div>
       )}
     </main>
