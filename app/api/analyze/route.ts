@@ -15,16 +15,16 @@ export async function POST(request: Request) {
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を細部まで解析し、以下の情報を必ず有効なJSON形式のみで出力してください。
-条件：
-1. productName: 製品名
-2. price: おおよその価格帯
-3. company: 産地または製造元会社名
-4. basicInfo: 基礎情報
-5. trivia: 豆知識
-6. searchQuery: 類似画像検索用のキーワード
-出力フォーマット例：
-{"productName": "...", "price": "...", "company": "...", "basicInfo": "...", "trivia": "...", "searchQuery": "..."}
+    const promptText = `この画像を細部まで解析し、以下のキーを持つ有効なJSON形式のみで出力してください。
+条件（余計な文字やMarkdownのバッククォートは一切含めず、純粋なJSONのみを返してください）：
+{
+  "productName": "製品名",
+  "price": "おおよその価格帯",
+  "company": "産地または製造元会社名",
+  "basicInfo": "基礎情報",
+  "trivia": "豆知識",
+  "searchQuery": "類似画像検索用のキーワード"
+}
 出力言語：「${lang}」`;
 
     const response = await fetch(
@@ -55,21 +55,48 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: data.error?.message || "APIエラー" }, { status: 500 });
+      return NextResponse.json({ 
+        productName: "解析エラー", 
+        price: "-", 
+        company: "-", 
+        basicInfo: data.error?.message || "API通信に失敗しました。", 
+        trivia: "-", 
+        searchQuery: "画像解析" 
+      }, { status: 500 });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      return NextResponse.json({ error: "応答が空です" }, { status: 500 });
+      return NextResponse.json({ 
+        productName: "解析エラー", 
+        price: "-", 
+        company: "-", 
+        basicInfo: "AIからの応答が空です。", 
+        trivia: "-", 
+        searchQuery: "画像解析" 
+      }, { status: 500 });
     }
 
+    // バッククォートや余分な文字を徹底的に除去して安全にJSONを抽出する
     let jsonString = text.trim();
     jsonString = jsonString.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+    
+    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      const parsedData = JSON.parse(jsonMatch[0]);
+      return NextResponse.json(parsedData);
+    }
 
-    const parsedData = JSON.parse(jsonString);
-    return NextResponse.json(parsedData);
+    throw new Error("JSON形式の抽出に失敗しました");
 
   } catch (error: any) {
-    return NextResponse.json({ error: "解析失敗" }, { status: 500 });
+    return NextResponse.json({ 
+      productName: "解析失敗", 
+      price: "不明", 
+      company: "不明", 
+      basicInfo: "画像の解析処理中にエラーが発生しました。もう一度お試しください。", 
+      trivia: "-", 
+      searchQuery: "画像解析" 
+    }, { status: 500 });
   }
 }
