@@ -15,19 +15,16 @@ export async function POST(request: Request) {
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を細部まで解析し、必ず以下の有効なJSON形式のみで出力してください（マークダウンや他の文字は一切含めないこと）。
-{
-  "productName": "製品名",
-  "price": "おおよその価格帯",
-  "company": "産地または製造元会社名",
-  "basicInfo": "基礎情報",
-  "trivia": "豆知識",
-  "searchQuery": "類似画像検索用のキーワード"
-}
-出力言語: ${lang}`;
+    const promptText = `この画像を解析してください。
+以下の条件を必ず守ってください：
+1. 画像に写っているものの説明や情報を集めてください。
+2. 機械が苦手な人や外国人のために、小学生でも分かるように3行の箇条書き（summary）と、キーワードのラベル（labels）にまとめてください。
+3. 出力する言語は「${lang}」で翻訳して出力してください。
+4. 必ず以下のJSON形式のみで回答してください（Markdownのバッククォートなども含めず純粋なJSON文字列にしてください）。
+{"summary": "1行目\\n2行目\\n3行目", "labels": ["項目1", "項目2"]}`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -54,21 +51,21 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: data.error?.message || "APIエラー" }, { status: 500 });
+      return NextResponse.json({ error: data.error?.message || "API通信エラーが発生しました。" }, { status: 500 });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      return NextResponse.json({ error: "応答が空です" }, { status: 500 });
+      return NextResponse.json({ error: "AIからの応答が空です。" }, { status: 500 });
     }
 
-    let jsonString = text.trim();
-    jsonString = jsonString.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return NextResponse.json({ summary: text, labels: [] });
+    }
 
-    const parsedData = JSON.parse(jsonString);
-    return NextResponse.json(parsedData);
-
+    return NextResponse.json(JSON.parse(jsonMatch[0]));
   } catch (error: any) {
-    return NextResponse.json({ error: "解析失敗" }, { status: 500 });
+    return NextResponse.json({ error: "サーバー内部エラーが発生しました。" }, { status: 500 });
   }
 }
