@@ -9,30 +9,26 @@ export async function POST(request: Request) {
     const lang = (formData.get("lang") as string) || "日本語";
 
     if (!image) {
-      return NextResponse.json({ 
-        price: "-", 
-        company: "-", 
-        basicInfo: "画像が取得できませんでした。", 
-        trivia: "-", 
-        searchQuery: "画像解析" 
-      }, { status: 400 });
+      return NextResponse.json({ error: "画像が取得できません。もう一度画像を選んでください。" }, { status: 400 });
     }
 
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を詳細に解析し、必ず以下のJSONフォーマットのみで出力してください。マークダウンや他の文字列は一切含めないでください。
-{
-  "price": "およその価格",
-  "company": "会社名 / 産地",
-  "basicInfo": "基礎情報",
-  "trivia": "豆知識",
-  "searchQuery": "類似画像検索用のキーワード"
-}
-出力言語: ${lang}`;
+    const promptText = `この画像を細部まで解析し、以下の情報を必ず有効なJSON形式のみで出力してください（Markdownのバッククォート \`\`\` などは一切含めないでください）。
+条件：
+1. productName: 製品名
+2. price: おおよその価格帯
+3. company: 産地または製造元会社名
+4. basicInfo: 基礎情報
+5. trivia: 豆知識
+6. searchQuery: 類似画像検索用のキーワード
+出力フォーマット例：
+{"productName": "...", "price": "...", "company": "...", "basicInfo": "...", "trivia": "...", "searchQuery": "..."}
+出力言語：「${lang}」`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -59,56 +55,23 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ 
-        price: "-", 
-        company: "-", 
-        basicInfo: data.error?.message || "APIエラーが発生しました。", 
-        trivia: "-", 
-        searchQuery: "画像解析" 
-      });
+      return NextResponse.json({ error: data.error?.message || "API通信エラーが発生しました。" }, { status: 500 });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      return NextResponse.json({ 
-        price: "-", 
-        company: "-", 
-        basicInfo: "AIからの応答が空です。", 
-        trivia: "-", 
-        searchQuery: "画像解析" 
-      });
+      return NextResponse.json({ error: "AIからの応答が空です。" }, { status: 500 });
     }
 
-    let cleanText = text.trim();
-    cleanText = cleanText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+    // バッククォートや余分なテキストを取り除いてJSON部分だけを安全に抽出する
+    let jsonString = text.trim();
+    jsonString = jsonString.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
 
-    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return NextResponse.json({
-        price: parsed.price || "-",
-        company: parsed.company || "-",
-        basicInfo: parsed.basicInfo || text,
-        trivia: parsed.trivia || "-",
-        searchQuery: parsed.searchQuery || "画像解析"
-      });
-    }
-
-    return NextResponse.json({ 
-      price: "-", 
-      company: "-", 
-      basicInfo: text, 
-      trivia: "-", 
-      searchQuery: "画像解析" 
-    });
+    const parsedData = JSON.parse(jsonString);
+    return NextResponse.json(parsedData);
 
   } catch (error: any) {
-    return NextResponse.json({ 
-      price: "-", 
-      company: "-", 
-      basicInfo: "サーバーエラーが発生しました。", 
-      trivia: "-", 
-      searchQuery: "画像解析" 
-    }, { status: 500 });
+    console.error("Analysis error:", error);
+    return NextResponse.json({ error: "サーバー内部エラーまたはJSONの解析に失敗しました。" }, { status: 500 });
   }
 }
