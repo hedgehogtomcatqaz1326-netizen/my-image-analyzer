@@ -40,7 +40,13 @@ export default function Home() {
       if (!response.ok) throw new Error(data.error || "解析失敗");
       setResult(data);
     } catch (error) {
-      alert("解析に失敗しました");
+      alert(
+        "【解析に失敗しました】\n\n" +
+        "原因：AIが正しくデータを読み取れなかったか、通信が一時的に不安定です。\n\n" +
+        "【次にどうするべきか】\n" +
+        "1. もう一度「この画像を解析」ボタンを押し直してください。\n" +
+        "2. それでも失敗する場合は、別の写真（明るい場所で撮った写真や、ファイルサイズの小さい画像）に選び直して再度お試しください。"
+      );
     } finally {
       setLoading(false);
     }
@@ -87,7 +93,7 @@ export default function Home() {
         </button>
       )}
 
-      {/* 解析結果の表示（製品名・価格・会社名・基礎情報・豆知識・類似画像検索） */}
+      {/* 解析結果の表示 */}
       {result && (
         <div style={{ marginTop: "20px", padding: "20px", backgroundColor: "#f0fdf4", borderRadius: "8px", border: "1px solid #bbf7d0" }}>
           <h2 style={{ fontSize: "20px", marginBottom: "15px", color: "#166534" }}>{result.productName}</h2>
