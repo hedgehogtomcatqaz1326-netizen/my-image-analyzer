@@ -18,9 +18,9 @@ export async function POST(request: Request) {
     const promptText = `この画像を解析してください。
 以下の条件を必ず守ってください：
 1. 画像に写っているものの説明や情報を集めてください。
-2. 機械が苦手な人や外国人のために、小学生でも分かるように3行の箇条書き（summary）と、キーワードのラベル（labels）にまとめてください。
-3. 出力する言語は「${lang}」で翻訳して出力してください。
-4. 必ず以下のJSON形式のみで回答してください（Markdownのバッククォートなども含めず純粋なJSON文字列にしてください）。
+2. 小学生でも分かるように3行の箇条書き（summary）と、キーワードのラベル（labels）にまとめてください。
+3. 出力する言語は「${lang}」にしてください。
+4. 必ずJSON形式のみで回答してください。
 {"summary": "1行目\\n2行目\\n3行目", "labels": ["項目1", "項目2"]}`;
 
     const response = await fetch(
@@ -51,21 +51,44 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (!response.ok) {
-      return NextResponse.json({ error: data.error?.message || "API通信エラーが発生しました。" }, { status: 500 });
+      return NextResponse.json({ 
+        summary: "画像から情報を取得できませんでした。", 
+        labels: ["画像解析"] 
+      });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
-      return NextResponse.json({ error: "AIからの応答が空です。" }, { status: 500 });
+      return NextResponse.json({ 
+        summary: "画像を解析できませんでした。", 
+        labels: ["画像解析"] 
+      });
     }
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return NextResponse.json({ summary: text, labels: [] });
+    // JSONを安全に抽出（失敗しても絶対に500エラーにせず、テキストをそのままサマリーにする）
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return NextResponse.json({
+          summary: parsed.summary || text,
+          labels: parsed.labels || ["画像解析"]
+        });
+      }
+    } catch (e) {
+      // パース失敗時のフォールバック
     }
 
-    return NextResponse.json(JSON.parse(jsonMatch[0]));
+    return NextResponse.json({ 
+      summary: text, 
+      labels: ["画像解析"] 
+    });
+
   } catch (error: any) {
-    return NextResponse.json({ error: "サーバー内部エラーが発生しました。" }, { status: 500 });
+    // 万が一何かが起きても500エラーで止めず、安全にテキストを返す
+    return NextResponse.json({ 
+      summary: "解析処理中にエラーが発生しました。", 
+      labels: ["画像解析"] 
+    });
   }
 }
