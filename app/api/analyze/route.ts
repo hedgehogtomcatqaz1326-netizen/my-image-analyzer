@@ -15,13 +15,17 @@ export async function POST(request: Request) {
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を解析してください。
-以下の条件を必ず守ってください：
-1. 画像に写っているものの説明や情報を集めてください。
-2. 機械が苦手な人や外国人のために、小学生でも分かるように3行の箇条書き（summary）と、キーワードのラベル（labels）にまとめてください。
-3. 出力する言語は「${lang}」で翻訳して出力してください。
-4. 必ず以下のJSON形式のみで回答してください（Markdownのバッククォートなども含めず純粋なJSON文字列にしてください）。
-{"summary": "1行目\\n2行目\\n3行目", "labels": ["項目1", "項目2"]}`;
+    const promptText = `この画像を細部まで解析し、以下の情報を必ず有効なJSON形式のみで出力してください（Markdownのバッククォート \`\`\` などは一切含めないでください）。
+条件：
+1. productName: 製品名
+2. price: おおよその価格帯
+3. company: 産地または製造元会社名
+4. basicInfo: 基礎情報
+5. trivia: 豆知識
+6. searchQuery: 類似画像検索用のキーワード
+出力フォーマット例：
+{"productName": "...", "price": "...", "company": "...", "basicInfo": "...", "trivia": "...", "searchQuery": "..."}
+出力言語：「${lang}」`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
@@ -59,13 +63,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "AIからの応答が空です。" }, { status: 500 });
     }
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return NextResponse.json({ summary: text, labels: [] });
-    }
+    // バッククォートや余分なテキストを取り除いてJSON部分だけを安全に抽出する
+    let jsonString = text.trim();
+    jsonString = jsonString.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
 
-    return NextResponse.json(JSON.parse(jsonMatch[0]));
+    const parsedData = JSON.parse(jsonString);
+    return NextResponse.json(parsedData);
+
   } catch (error: any) {
-    return NextResponse.json({ error: "サーバー内部エラーが発生しました。" }, { status: 500 });
+    console.error("Analysis error:", error);
+    return NextResponse.json({ error: "サーバー内部エラーまたはJSONの解析に失敗しました。" }, { status: 500 });
   }
 }
