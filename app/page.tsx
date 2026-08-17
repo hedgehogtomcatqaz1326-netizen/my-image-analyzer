@@ -7,6 +7,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isError, setIsError] = useState(false); // 解析失敗フラグ
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // カメラ・ファイル選択時の処理
@@ -16,6 +17,7 @@ export default function Home() {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
       setResult(null);
+      setIsError(false);
     }
   };
 
@@ -28,6 +30,7 @@ export default function Home() {
     if (!selectedFile) return;
 
     setLoading(true);
+    setIsError(false);
     const formData = new FormData();
     formData.append("image", selectedFile);
     
@@ -40,13 +43,7 @@ export default function Home() {
       if (!response.ok) throw new Error(data.error || "解析失敗");
       setResult(data);
     } catch (error) {
-      alert(
-        "【解析に失敗しました】\n\n" +
-        "原因：AIが正しくデータを読み取れなかったか、通信が一時的に不安定です。\n\n" +
-        "【次にどうするべきか】\n" +
-        "1. もう一度「この画像を解析」ボタンを押し直してください。\n" +
-        "2. それでも失敗する場合は、別の写真（明るい場所で撮った写真や、ファイルサイズの小さい画像）に選び直して再度お試しください。"
-      );
+      setIsError(true); // 失敗時はエラー状態にする
     } finally {
       setLoading(false);
     }
@@ -82,8 +79,8 @@ export default function Home() {
         )}
       </div>
 
-      {/* 画像が選ばれている時だけ解析ボタンを表示 */}
-      {previewUrl && !result && (
+      {/* 画像が選ばれていて、まだ結果が出ていない時の解析ボタン */}
+      {previewUrl && !result && !isError && (
         <button 
           onClick={handleAnalyze} 
           disabled={loading} 
@@ -91,6 +88,17 @@ export default function Home() {
         >
           {loading ? "解析中..." : "この画像を解析"}
         </button>
+      )}
+
+      {/* 解析失敗時の表示：クリックするだけで即座に写真を撮り直せる */}
+      {isError && (
+        <div 
+          onClick={triggerCamera}
+          style={{ width: "100%", padding: "15px", backgroundColor: "#fee2e2", color: "#991b1b", border: "1px solid #f87171", borderRadius: "6px", fontSize: "16px", fontWeight: "bold", textAlign: "center", cursor: "pointer", marginBottom: "20px" }}
+        >
+          ❌ 解析に失敗しました<br />
+          <span style={{ fontSize: "14px", fontWeight: "normal" }}>【タップしてもう一度写真を撮り直す】</span>
+        </div>
       )}
 
       {/* 解析結果の表示 */}
@@ -107,7 +115,7 @@ export default function Home() {
 
           <div style={{ textAlign: "center" }}>
             <a 
-              href={`https://www.google.com/search?q=${encodeURIComponent(result.searchQuery || result.productName)}&tbm=isch`} 
+              href={`[https://www.google.com/search?q=$](https://www.google.com/search?q=$){encodeURIComponent(result.searchQuery || result.productName)}&tbm=isch`} 
               target="_blank" 
               rel="noreferrer"
               style={{
