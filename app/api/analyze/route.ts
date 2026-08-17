@@ -23,16 +23,16 @@ export async function POST(request: Request) {
 
     const promptText = `この画像を詳細に解析し、必ず以下のJSONフォーマットのみで出力してください。マークダウンや他の文字列は一切含めないでください。
 {
-  "price": "およその価格（例: 約150円〜200円 など）",
-  "company": "会社名 / 産地（例: 日清食品 など）",
-  "basicInfo": "基礎情報（製品の特徴や概要）",
-  "trivia": "豆知識（知られざる特徴や歴史など）",
-  "searchQuery": "類似画像検索用のキーワード（製品名やブランド名）"
+  "price": "およその価格",
+  "company": "会社名 / 産地",
+  "basicInfo": "基礎情報",
+  "trivia": "豆知識",
+  "searchQuery": "類似画像検索用のキーワード"
 }
 出力言語: ${lang}`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
