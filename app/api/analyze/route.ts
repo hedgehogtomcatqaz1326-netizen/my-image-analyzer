@@ -15,17 +15,14 @@ export async function POST(request: Request) {
     const arrayBuffer = await image.arrayBuffer();
     const base64Image = Buffer.from(arrayBuffer).toString("base64");
 
-    const promptText = `この画像を細部まで解析し、以下のキーを持つ有効なJSON形式のみで出力してください。
-条件（余計な文字やMarkdownのバッククォートは一切含めず、純粋なJSONのみを返してください）：
+    // 複雑なJSON指定をせず、確実に応答が得られるプロンプトにする
+    const promptText = `この画像を詳しく解析し、以下の形式のJSONのみで答えてください。
+他の文字やマークダウンは一切含めないこと。
 {
-  "productName": "製品名",
-  "price": "おおよその価格帯",
-  "company": "産地または製造元会社名",
-  "basicInfo": "基礎情報",
-  "trivia": "豆知識",
-  "searchQuery": "類似画像検索用のキーワード"
+  "summary": "ここに画像の詳細な説明、価格や会社名、基礎情報、豆知識などをまとめて分かりやすく書いてください",
+  "labels": ["検索キーワード1", "検索キーワード2"]
 }
-出力言語：「${lang}」`;
+出力言語: ${lang}`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
@@ -56,47 +53,41 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       return NextResponse.json({ 
-        productName: "解析エラー", 
-        price: "-", 
-        company: "-", 
-        basicInfo: data.error?.message || "API通信に失敗しました。", 
-        trivia: "-", 
-        searchQuery: "画像解析" 
-      }, { status: 500 });
+        summary: "画像から情報を取得できませんでした。", 
+        labels: ["画像解析"] 
+      });
     }
 
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       return NextResponse.json({ 
-        productName: "解析エラー", 
-        price: "-", 
-        company: "-", 
-        basicInfo: "AIからの応答が空です。", 
-        trivia: "-", 
-        searchQuery: "画像解析" 
-      }, { status: 500 });
+        summary: "応答が空です。", 
+        labels: ["画像解析"] 
+      });
     }
 
-    // バッククォートや余分な文字を徹底的に除去して安全にJSONを抽出する
-    let jsonString = text.trim();
-    jsonString = jsonString.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
-    
-    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsedData = JSON.parse(jsonMatch[0]);
-      return NextResponse.json(parsedData);
-    }
+    // JSONを安全に抽出し、失敗してもテキストをそのまま返す
+    let cleanText = text.trim();
+    cleanText = cleanText.replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
 
-    throw new Error("JSON形式の抽出に失敗しました");
+    try {
+      const parsed = JSON.parse(cleanText);
+      return NextResponse.json({
+        summary: parsed.summary || text,
+        labels: parsed.labels || ["画像解析"]
+      });
+    } catch (e) {
+      // JSONパースに失敗した場合でも、AIの返答テキストをそのままサマリーとして表示する
+      return NextResponse.json({
+        summary: text,
+        labels: ["画像解析"]
+      });
+    }
 
   } catch (error: any) {
     return NextResponse.json({ 
-      productName: "解析失敗", 
-      price: "不明", 
-      company: "不明", 
-      basicInfo: "画像の解析処理中にエラーが発生しました。もう一度お試しください。", 
-      trivia: "-", 
-      searchQuery: "画像解析" 
+      summary: "解析処理中にエラーが発生しました。", 
+      labels: ["画像解析"] 
     }, { status: 500 });
   }
 }
